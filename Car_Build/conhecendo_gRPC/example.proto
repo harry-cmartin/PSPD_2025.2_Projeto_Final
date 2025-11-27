@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package example;
+
+service Communicator {
+
+  // Unary call
+  rpc UnaryHello(HelloRequest) returns (HelloReply);
+
+  // Server-streaming call
+  rpc SplitWords(TextRequest) returns (stream WordReply);
+
+  // Client-streaming call
+  rpc Average(stream NumberRequest) returns (AverageReply);
+
+  // Bidirectional streaming call
+  rpc Chat(stream ChatMessage) returns (stream ChatMessage);
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
+}
+
+message TextRequest {
+  string text = 1;
+}
+
+message WordReply {
+  string word = 1;
+}
+
+message NumberRequest {
+   float number = 1;
+}
+
+message AverageReply {
+  float average = 1;
+}
+
+message ChatMessage {
+  string sender = 1;
+  string text = 2;
+}

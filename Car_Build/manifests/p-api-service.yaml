@@ -1,0 +1,14 @@
+# p-api-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: p-api-service
+spec:
+  type: NodePort # NodePort funciona em qualquer cluster Kubernetes
+  selector:
+    app: p-api # Conecta este serviço ao Deployment acima
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 30080 # Porta fixa para acesso externo (Kind mapeia 30080 -> 8000 do host)

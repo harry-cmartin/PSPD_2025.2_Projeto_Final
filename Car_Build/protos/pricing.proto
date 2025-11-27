@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package pricing;
+
+import "common.proto";
+
+message Item {
+    common.Peca peca = 1;
+    int32 quantidade = 2;
+}
+
+message Preco {
+    double preco = 1;
+    double frete = 2;
+    double total = 3;
+}
+
+message OrcamentoRequest {
+    repeated Item itens = 1;
+}
+
+// Novos messages para compra
+message CompraRequest {
+    repeated Item itens = 1;
+    double valor_total = 2;
+}
+
+message CompraResponse {
+    string pedido_id = 1;
+    string status = 2;
+    double valor_total = 3;
+    string data_pedido = 4;
+    repeated Item itens_comprados = 5;
+    double subtotal = 6;
+    double frete = 7;
+}
+
+service OrcamentoService {
+    // Unario
+    rpc Calcular (OrcamentoRequest) returns (Preco);
+    // Novo método para finalizar compra
+    rpc RealizarCompra (CompraRequest) returns (CompraResponse);
+}

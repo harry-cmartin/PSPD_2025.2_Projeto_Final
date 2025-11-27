@@ -1,0 +1,40 @@
+# server-b-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-b-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: server-b
+  template:
+    metadata:
+      labels:
+        app: server-b
+    spec:
+      containers:
+        - name: server-b-container
+          image: localhost:5001/car_build-server-b:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50052
+          # Health check para gRPC
+          livenessProbe:
+            tcpSocket:
+              port: 50052
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 50052
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          # Resource limits
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package common;
+
+message Peca {
+
+    string id = 1; 
+    string nome = 2;
+    double valor = 3; 
+
+}

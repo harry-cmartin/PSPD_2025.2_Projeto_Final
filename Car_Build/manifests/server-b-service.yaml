@@ -1,0 +1,13 @@
+# server-b-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: server-b-service # Este é o nome que a p-api usará para se conectar
+spec:
+  type: ClusterIP
+  selector:
+    app: server-b # Conecta ao Deployment do server-b
+  ports:
+    - protocol: TCP
+      port: 50052
+      targetPort: 50052

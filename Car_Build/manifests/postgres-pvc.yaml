@@ -1,0 +1,11 @@
+# postgres-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce # O volume pode ser montado como leitura/escrita por um único nó
+  resources:
+    requests:
+      storage: 1Gi # Pedindo 1 Gigabyte de espaço.

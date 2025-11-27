@@ -1,0 +1,51 @@
+# server-a-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-a-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: server-a
+  template:
+    metadata:
+      labels:
+        app: server-a
+    spec:
+      containers:
+        - name: server-a-container
+          image: localhost:5001/car_build-server-a:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+          env:
+            - name: DB_HOST
+              value: "postgres-service" # Aponta para o Service do Postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "car_build_db"
+            - name: DB_USER
+              value: "car_build_user"
+            - name: DB_PASSWORD
+              value: "car_build_password"
+          # Health check para gRPC
+          livenessProbe:
+            tcpSocket:
+              port: 50051
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 50051
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          # Resource limits
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"

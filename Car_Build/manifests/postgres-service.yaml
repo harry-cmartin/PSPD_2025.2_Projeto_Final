@@ -1,0 +1,13 @@
+# postgres-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service # Este é o nome que o server-a usará para se conectar
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres # Conecta ao Deployment do postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432

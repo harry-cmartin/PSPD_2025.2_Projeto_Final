@@ -1,0 +1,67 @@
+# postgres-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres-container
+          image: postgres:15-alpine # Baixará a imagem oficial do Docker Hub
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "car_build_db"
+            - name: POSTGRES_USER
+              value: "car_build_user"
+            - name: POSTGRES_PASSWORD
+              value: "car_build_password"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          # Health checks para PostgreSQL
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - car_build_user
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - car_build_user
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          # Resource limits para banco de dados
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc # Usa o PVC que criamos acima
+        - name: init-script
+          configMap:
+            name: postgres-init-script

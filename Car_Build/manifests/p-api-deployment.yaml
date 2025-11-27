@@ -1,0 +1,50 @@
+# p-api-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: p-api-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: p-api
+  template:
+    metadata:
+      labels:
+        app: p-api
+    spec:
+      containers:
+        - name: p-api-container
+          image: localhost:5001/car_build-p-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: SERVER_A_HOST
+              value: "server-a-service" # Aponta para o Service do server-a
+            - name: SERVER_B_HOST
+              value: "server-b-service" # Aponta para o Service do server-b
+          # Health checks para garantir disponibilidade
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          # Resource limits para evitar consumo excessivo
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

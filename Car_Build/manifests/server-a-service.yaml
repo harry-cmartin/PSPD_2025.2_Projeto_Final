@@ -1,0 +1,13 @@
+# server-a-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: server-a-service # Este é o nome que a p-api usará para se conectar
+spec:
+  type: ClusterIP # Padrão, só acessível dentro do cluster
+  selector:
+    app: server-a # Conecta ao Deployment do server-a
+  ports:
+    - protocol: TCP
+      port: 50051
+      targetPort: 50051

@@ -1,0 +1,55 @@
+# Configuração do cluster Kind multi-nó
+# Este cluster simula um ambiente de produção com:
+# - 1 nó control-plane (gerencia o cluster)
+# - 3 nós workers (executam as aplicações)
+
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+name: car-build-cluster
+
+# Configuração dos nós do cluster
+nodes:
+  # Nó Control Plane - gerencia o estado do cluster
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      # Mapeia porta 30080 do host para 30080 do node (NodePort da aplicação)
+      - containerPort: 30080
+        hostPort: 8000
+        protocol: TCP
+      # Porta para Ingress Controller (se quiser usar depois)
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+
+  # Worker Node 1 - executa pods da aplicação
+  - role: worker
+    labels:
+      worker-id: "1"
+
+  # Worker Node 2 - executa pods da aplicação
+  - role: worker
+    labels:
+      worker-id: "2"
+
+  # Worker Node 3 - executa pods da aplicação
+  - role: worker
+    labels:
+      worker-id: "3"
+
+# Configuração de rede
+networking:
+  # Desabilita kind's default CNI e permite instalar um customizado
+  disableDefaultCNI: false
+  # Subnet para pods
+  podSubnet: "10.244.0.0/16"
+  # Subnet para services
+  serviceSubnet: "10.96.0.0/12"

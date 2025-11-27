@@ -1,0 +1,23 @@
+
+syntax = "proto3"; 
+
+package catalogo;
+
+import "common.proto";
+
+message Carro {
+    string modelo = 1;
+    int32 ano = 2;
+}
+
+message PecasResponse {
+    repeated common.Peca pecas = 1;
+}
+
+service CatalogoService {
+    //Unary
+    rpc GetPecas (Carro) returns (PecasResponse);
+
+}
+
+   
