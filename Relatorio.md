@@ -48,7 +48,7 @@ A equipe se reuniu semanalmente durante o desenvolvimento do projeto, com encont
 ### 2.2 Cronograma de Desenvolvimento
 
 #### Encontro 1: Montagem do Kubernetes
-- **Duração**: 1 semana
+- **Duração**: 2 dias
 - **Atividades realizadas**:
   - Estudo da arquitetura Kubernetes e conceitos de pods, deployments e services
   - Instalação e configuração do Kind (Kubernetes in Docker)
@@ -59,7 +59,7 @@ A equipe se reuniu semanalmente durante o desenvolvimento do projeto, com encont
   - Setup do registry local para imagens Docker
 
 #### Encontro 2: Configuração do Locust e Prometheus
-- **Duração**: 2 semanas
+- **Duração**: 1 dia
 - **Atividades realizadas**:
   - Integração do Prometheus com os microserviços
   - Implementação de métricas customizadas (counters, histograms, gauges)
@@ -71,7 +71,7 @@ A equipe se reuniu semanalmente durante o desenvolvimento do projeto, com encont
   - Testes iniciais de conectividade e coleta de métricas
 
 #### Encontro 3: Execução dos Testes
-- **Duração**: 1 semana
+- **Duração**: 1 dia
 - **Atividades realizadas**:
   - Definição dos cenários de teste (base, moderado, alta distribuição)
   - Execução de testes de carga com diferentes configurações
@@ -262,49 +262,6 @@ ports:
 [PostgreSQL]
 ```
 
-### 3.6 Health Checks e Probes
-
-Todos os deployments implementam:
-- **livenessProbe**: Reinicia o pod se falhar
-- **readinessProbe**: Remove do balanceamento se não estiver pronto
-
-```yaml
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  initialDelaySeconds: 30
-  periodSeconds: 10
-
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  initialDelaySeconds: 10
-  periodSeconds: 5
-```
-
-### 3.7 Comandos Úteis de Gerenciamento
-
-```bash
-# Verificar status do cluster
-kubectl get nodes
-kubectl get pods -o wide
-kubectl get services
-
-# Logs de um pod
-kubectl logs -f <pod-name>
-
-# Escalar deployment
-kubectl scale deployment server-a-deployment --replicas=3
-
-# Deletar e recriar cluster
-kind delete cluster --name car-build-cluster
-kind create cluster --config=kind-cluster-config.yaml
-```
-
----
-
 ## 4. Monitoramento e Observabilidade
 
 ### 4.1 Prometheus: Sistema de Monitoramento
@@ -345,98 +302,6 @@ scrape_configs:
   - job_name: 'server-b'
     static_configs:
       - targets: ['localhost:9092']
-```
-
-**Inicialização:**
-```bash
-./start-with-prometheus.sh
-# Acesso: http://localhost:9090
-```
-
-#### 4.1.3 Métricas Implementadas
-
-**P-API (FastAPI + prometheus_client):**
-
-```python
-# Contador de requisições
-REQUEST_COUNT = Counter(
-    'p_api_requests_total',
-    'Total de requisições recebidas',
-    ['method', 'endpoint', 'status']
-)
-
-# Latência das requisições
-REQUEST_LATENCY = Histogram(
-    'p_api_request_duration_seconds',
-    'Latência em segundos',
-    ['method', 'endpoint']
-)
-
-# Chamadas gRPC
-GRPC_CALLS = Counter(
-    'p_api_grpc_calls_total',
-    'Chamadas gRPC para microserviços',
-    ['service', 'status']
-)
-
-# Requisições ativas
-ACTIVE_REQUESTS = Gauge(
-    'p_api_active_requests',
-    'Requisições ativas no momento'
-)
-```
-
-**Server-A (Node.js + prom-client):**
-
-```javascript
-// Requisições gRPC recebidas
-const grpcRequestsTotal = new Counter({
-  name: 'server_a_grpc_requests_total',
-  labelNames: ['method', 'status']
-});
-
-// Duração de requisições
-const grpcRequestDuration = new Histogram({
-  name: 'server_a_grpc_request_duration_seconds',
-  labelNames: ['method']
-});
-
-// Queries no banco de dados
-const dbQueriesTotal = new Counter({
-  name: 'server_a_db_queries_total',
-  labelNames: ['status']
-});
-
-// Conexões ativas com o banco
-const dbConnectionsActive = new Gauge({
-  name: 'server_a_db_connections_active'
-});
-```
-
-**Server-B (Node.js + prom-client):**
-
-```javascript
-// Requisições gRPC
-const grpcRequestsTotal = new Counter({
-  name: 'server_b_grpc_requests_total',
-  labelNames: ['method', 'status']
-});
-
-// Cálculos de orçamento
-const calculosRealizados = new Counter({
-  name: 'server_b_calculos_realizados_total'
-});
-
-// Compras processadas
-const comprasProcessadas = new Counter({
-  name: 'server_b_compras_processadas_total',
-  labelNames: ['status']
-});
-
-// Valor total de vendas
-const valorTotalCompras = new Counter({
-  name: 'server_b_valor_total_compras_reais'
-});
 ```
 
 #### 4.1.4 Queries PromQL Essenciais
@@ -699,7 +564,6 @@ Resposta: Formato Prometheus
 ```
 
 
-
 ### 5.4 Módulo A (Microserviço de Catálogo)
 
 #### 5.4.1 Responsabilidades
@@ -933,7 +797,7 @@ volumes:
 
 **Configuração:**
 - Réplicas: 1 de cada serviço
-- Workers: 3 nodes (subutilizados)
+- Workers: 3 nodes 
 
 **Caso base - 1 usuario e 1 spawn rate**
 
@@ -941,169 +805,141 @@ volumes:
 
 Casos de Teste:
 
-1: 2500 Usuários - 100 Spawn Rate - 1 minuto 
-2: 5000 Usuários - 100 Spawn Rate - 1 minuto
-3: 7500 Usuários - 100 Spawn Rate  - 1 minuto
+1: 2500 Usuários - 100 Spawn Rate - 3 minutos
+2: 5000 Usuários - 100 Spawn Rate - 3 minutos
+3: 7500 Usuários - 100 Spawn Rate  - 3 minutos
+
+**Resultados Obtidos: (Locust e Prometheus)**
+
+Query utilizada para monitorar o Prometheus
+
+![Query](assets/Query_prometheus.png)
 
 
-**Resultados Esperados:**
+1: 2500 Usuários - 100 Spawn Rate - 3 minutos
+
+![Teste 1 - 2500 usuarios Locust](assets/Locust_base_2500.png)
+
+![Teste 1 - 2500 usuarios Prometheus](assets/Prometheus_base_2500.png)
+
+2: 5000 Usuários - 100 Spawn Rate - 3 minutos
+
+![Teste 2 - 5000 usuarios - Locust](assets/Locust_base_5000.png)
+
+![Teste 2 - 5000 usuarios - Prometheus](assets/Prometheus_Base_5000.png)
+
+3: 7500 Usuários - 100 Spawn Rate  - 3 minutos
+
+![Teste 3 - 7500 usuarios - Locust](assets/Locust_base_7500.png)
+
+![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_base_7500.png)
+
+
+
+### 7.3 Cenário 2: Alteração do número de réplicas
+
+**Objetivo:** Comparar a partir da aplicação da paralelização
+
+**Configuração:**
+- Réplicas: P-API=3, Server-A=3, Server-B=3
+- Workers: 3 nodes 
+
+Casos de Teste:
+
+1: 2500 Usuários - 100 Spawn Rate - 3 minutos
+2: 5000 Usuários - 100 Spawn Rate - 3 minutos
+3: 7500 Usuários - 100 Spawn Rate  - 3 minutos
+
+**Resultados Obtidos: (Locust e Prometheus)**
+
+Query utilizada para monitorar o Prometheus
+
+![Query](assets/Query_prometheus.png)
+
+1: 2500 Usuários - 100 Spawn Rate - 3 minutos
+
+![Teste 1 - 2500 usuarios Locust](assets/Locust_Cenario2_2500.png)
+
+![Teste 1 - 2500 usuarios Prometheus](assets/Prometheus_Cenario2_2500.png)
+
+2: 5000 Usuários - 100 Spawn Rate - 3 minutos
+
+![Teste 2 - 5000 usuarios - Locust](assets/Locust_Cenario2_2500.png)
+
+![Teste 2 - 5000 usuarios - Prometheus](assets/Prometheus_Cenario2_5000.png)
+
+3: 7500 Usuários - 100 Spawn Rate  - 3 minutos
+
+![Teste 3 - 7500 usuarios - Locust](assets/Locust_Cenario2_7500.png)
+
+![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_Cenario2_7500.png)
+
+
+### 7.4 Cenário 3: Numero de Containers Por Workers
+
+**Configuração:**
+- Cluster: 3 worker nodes
+- Réplicas: P-API=3, Server-A=3, Server-B=3
+- Pods por workes: Worker1: 6 , Worker1: 5 , Worker1: 5 
+
+Casos de Teste:
+
+1: 2500 Usuários - 100 Spawn Rate - 3 minutos
+2: 5000 Usuários - 100 Spawn Rate - 3 minutos
+3: 7500 Usuários - 100 Spawn Rate  - 3 minutos
+
+**Exemplo de mudança para os containers**
+
+```yaml
+# Exemplo: Car_Build/manifests/server-a-deployment.yaml
+spec:
+  replicas: 3
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - server-a  
+              topologyKey: kubernetes.io/hostname
+```
+
 
 **Resultados Obtidos: (Locust e Prometheus)**
 
 
-[Teste 1 - 2500 usuarios]()
+Query utilizada para monitorar o Prometheus
 
-[Teste 2 - 5000 usuarios]()
+![Query](assets/Query_prometheus.png)
 
-[Teste 2 - 5000 usuarios]()
+1: 2500 Usuários - 100 Spawn Rate - 3 minutos
 
-[Teste 3 - 7500 usuarios]()
+![Teste 1 - 2500 usuarios Locust](assets/Locust_Cenario3_2500.png)
 
+![Teste 1 - 2500 usuarios Prometheus](assets/Prometheus_Cenario3_2500.png)
 
+2: 5000 Usuários - 100 Spawn Rate - 3 minutos
 
-**Conclusão:**
+![Teste 2 - 5000 usuarios - Locust](assets/Locust_Cenario3_5000.png)
 
+![Teste 2 - 5000 usuarios - Prometheus](assets/Prometheus_Cenario3_5000.png)
 
-### 7.3 Cenário 2: Paralelização Moderada
+3: 7500 Usuários - 100 Spawn Rate  - 3 minutos
 
-**Objetivo:** Avaliar impacto de múltiplas réplicas
+![Teste 3 - 7500 usuarios - Locust](assets/Locust_Cenario3_7500.png)
 
-**Configuração:**
-- Réplicas: P-API=2, Server-A=3, Server-B=3
-- Workers: 3 nodes (melhor distribuição)
-- Carga: 100 usuários, spawn rate 10
-
-**Comandos:**
-```bash
-kubectl scale deployment server-a-deployment --replicas=3
-kubectl scale deployment server-b-deployment --replicas=3
-kubectl scale deployment p-api-deployment --replicas=2
-
-# Verificar distribuição
-kubectl get pods -o wide
-
-# Executar teste
-locust -f locustfile.py --host=http://localhost:8000 \
-  --users 100 --spawn-rate 10 --run-time 300s --headless
-```
-
-**Resultados Esperados:**
-- [ESPAÇO PARA RESULTADOS]
-
-**Comparação com Cenário 1:**
-- Melhoria no RPS:
-- Redução na latência:
-- Distribuição de carga:
-
-**Conclusão:**
-
-
-### 7.4 Cenário 3: Alta Distribuição
-
-**Objetivo:** Testar limites de escalabilidade
-
-**Configuração:**
-- Cluster: 5 worker nodes
-- Réplicas: P-API=3, Server-A=5, Server-B=5
-- Carga: 500 usuários, spawn rate 50
-
-**Preparação:**
-```bash
-# Recriar cluster com 5 workers
-kind delete cluster --name car-build-cluster
-# Editar kind-cluster-config.yaml (adicionar 2 workers)
-kind create cluster --config=kind-cluster-config.yaml
-./setup-kind-cluster.sh
-
-# Escalar
-kubectl scale deployment server-a-deployment --replicas=5
-kubectl scale deployment server-b-deployment --replicas=5
-kubectl scale deployment p-api-deployment --replicas=3
-```
-
-**Teste:**
-```bash
-locust -f locustfile.py --host=http://localhost:8000 \
-  --users 500 --spawn-rate 50 --run-time 600s --headless
-```
-
-**Resultados Esperados:**
-- [ESPAÇO PARA RESULTADOS]
-
-**Análise de Custo-Benefício:**
-
-
-### 7.5 Cenário 4: Variação de Carga (Spike Test)
-
-**Objetivo:** Avaliar elasticidade e recuperação
-
-**Configuração:**
-- Réplicas: Moderadas (3-3-2)
-- Carga: Rampa 10 → 200 → 10 usuários
-
-**Script:**
-```bash
-# Fase 1: Carga baixa (2 min)
-locust -f locustfile.py --host=http://localhost:8000 \
-  --users 10 --spawn-rate 5 --run-time 120s --headless
-
-# Fase 2: Spike (5 min)
-locust -f locustfile.py --host=http://localhost:8000 \
-  --users 200 --spawn-rate 40 --run-time 300s --headless
-
-# Fase 3: Recuperação (2 min)
-locust -f locustfile.py --host=http://localhost:8000 \
-  --users 10 --spawn-rate 5 --run-time 120s --headless
-```
-
-**Resultados Esperados:**
-- [ESPAÇO PARA RESULTADOS]
-
-**Observações:**
-
-
-### 7.6 Cenário 5: Stress Test (Limite Superior)
-
-**Objetivo:** Encontrar ponto de quebra
-
-**Configuração:**
-- Réplicas: Máximas (5-5-3)
-- Carga: Incremental até falha
-
-**Metodologia:**
-```bash
-# Testar com carga crescente
-for users in 100 200 500 1000 1500 2000; do
-  echo "Testando com $users usuários..."
-  locust -f locustfile.py --host=http://localhost:8000 \
-    --users $users --spawn-rate 50 --run-time 120s --headless
-  sleep 30  # Tempo de recuperação
-done
-```
-
-**Resultados:**
-- [ESPAÇO PARA TABELA DE RESULTADOS]
-
-| Usuários | RPS | Latência P95 | Taxa de Erro | Status |
-|----------|-----|--------------|--------------|--------|
-| 100      |     |              |              |        |
-| 200      |     |              |              |        |
-| 500      |     |              |              |        |
-| 1000     |     |              |              |        |
-
-**Ponto de Saturação:**
+![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_Cenario3_7500.png)
 
 
 ### 7.7 Análise Comparativa
 
-**Tabela Resumo:**
-- [ESPAÇO PARA TABELA COMPARATIVA]
-
-**Gráficos:**
-- [ESPAÇO PARA GRÁFICOS]
-
 **Conclusões Gerais:**
-
 
 ---
 
