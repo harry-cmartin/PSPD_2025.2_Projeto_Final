@@ -1,0 +1,52 @@
+# Configuração do Prometheus para monitorar o projeto Car Build
+# Este arquivo define quais serviços serão monitorados e com que frequência
+
+global:
+  # Intervalo de coleta de métricas (a cada 10 segundos para testes de carga)
+  scrape_interval: 10s
+  
+  # Timeout para coleta (se não responder em 5s, considera falha)
+  scrape_timeout: 5s
+  
+  # Intervalo de avaliação de regras de alerta
+  evaluation_interval: 10s
+
+# Configuração de quais serviços monitorar
+scrape_configs:
+  # ===== 1. PROMETHEUS (Auto-monitoramento) =====
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          environment: 'development'
+          service: 'prometheus'
+
+  # ===== 2. P-API (FastAPI - Gateway Principal) =====
+  - job_name: 'p-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8000']
+        labels:
+          environment: 'development'
+          service: 'p-api'
+          type: 'gateway'
+
+  # ===== 3. SERVER A (gRPC - Catálogo de Peças) =====
+  - job_name: 'server-a'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:9091']
+        labels:
+          environment: 'development'
+          service: 'server-a'
+          type: 'grpc-service'
+
+  # ===== 4. SERVER B (gRPC - Pricing/Orçamento) =====
+  - job_name: 'server-b'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:9092']
+        labels:
+          environment: 'development'
+          service: 'server-b'
+          type: 'grpc-service'
