@@ -12,10 +12,12 @@ class CarBuildUser(HttpUser):
     
     # Host base (pode ser sobrescrito via linha de comando)
     host = "http://localhost:8000"
+    contador_usuarios = 0
     
     def on_start(self):
         """Executado uma vez quando o usuário inicia"""
-        print(f"Usuário iniciado: {self.__class__.__name__}")
+        CarBuildUser.contador_usuarios += 1
+        print(f"Usuário iniciado: {self.__class__.__name__, CarBuildUser.contador_usuarios}")
     
     @task(1)  
     def health_check(self):
@@ -26,7 +28,7 @@ class CarBuildUser(HttpUser):
             else:
                 response.failure(f"Health check falhou: {response.status_code}")
     
-    @task(3)  # Peso 3 - mais frequente
+    @task(1)
     def get_pecas(self):
         """Testa busca de peças para diferentes modelos de carro"""
         carros = [
@@ -54,7 +56,7 @@ class CarBuildUser(HttpUser):
             else:
                 response.failure(f"Status {response.status_code}")
     
-    @task(2)
+    @task(1)
     def calcular(self):
         """Testa cálculo de orçamento com peças aleatórias"""
         
@@ -161,22 +163,37 @@ class CarBuildUser(HttpUser):
                 print(f"Erro no fluxo de compra: {e}")
 
 
-class HeavyLoadUser(HttpUser):
-    """
-    Usuário que faz requisições mais pesadas (stress test).
-    Use com menos usuários, mas mais intenso.
-    """
-    print("usuario pesado")
-    wait_time = between(0.5, 1)  # Mais rápido
-    host = "http://localhost:8000"
+# class HeavyLoadUser(HttpUser):
+#     """
+#     Usuário que faz requisições mais pesadas (stress test).
+#     Use com menos usuários, mas mais intenso.
+#     """
+#     print("usuario pesado")
+#     wait_time = between(0.5, 1)  # Mais rápido
+#     host = "http://localhost:8000"
     
-    @task
-    def bombardear_get_pecas(self):
-        """Faz múltiplas requisições rápidas"""
-        modelos = ["Civic", "Corolla", "Fusca"]
+#     @task
+#     def bombardear_get_pecas(self):
+#         """Faz múltiplas requisições rápidas"""
+#         carros = [
+#             {"modelo": "Civic", "ano": 2023},
+#             {"modelo": "Corolla", "ano": 2020},
+#             {"modelo": "Fusca", "ano": 2014},
+#         ]
         
-        for modelo in modelos:
-            self.client.post(
-                "/get-pecas",
-                json={"modelo": modelo, "ano": random.randint(2018, 2024)}
-            )
+#         for carro in carros:
+#             self.client.post(
+#                 "/get-pecas",
+#                 json=carro
+#             )
+
+# class HeavyLoadUser2(HttpUser):
+#     """
+#     Usuário que faz requisições mais pesadas (stress test).
+#     Use com menos usuários, mas mais intenso.
+#     """
+#     print("usuario pesado")
+#     wait_time = between(0.5, 1)  # Mais rápido
+#     host = "http://localhost:8000"
+    
+   
