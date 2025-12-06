@@ -1,5 +1,58 @@
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
+const express = require("express");
+const promClient = require("prom-client");
+
+const register = new promClient.Registry();
+
+// Métricas padrão do sistema
+promClient.collectDefaultMetrics({ register });
+
+// Métricas customizadas para Server B
+const grpcRequestsTotal = new promClient.Counter({
+  name: 'server_b_grpc_requests_total',
+  help: 'Total de requisições gRPC recebidas',
+  labelNames: ['method', 'status'],
+  registers: [register]
+});
+
+const grpcRequestDuration = new promClient.Histogram({
+  name: 'server_b_grpc_request_duration_seconds',
+  help: 'Duração das requisições gRPC em segundos',
+  labelNames: ['method'],
+  registers: [register]
+});
+
+const calculosRealizados = new promClient.Counter({
+  name: 'server_b_calculos_realizados_total',
+  help: 'Total de cálculos de orçamento realizados',
+  registers: [register]
+});
+
+const comprasProcessadas = new promClient.Counter({
+  name: 'server_b_compras_processadas_total',
+  help: 'Total de compras processadas',
+  labelNames: ['status'],
+  registers: [register]
+});
+
+const valorTotalCompras = new promClient.Counter({
+  name: 'server_b_valor_total_compras_reais',
+  help: 'Valor total em reais de todas as compras',
+  registers: [register]
+});
+
+// Servidor HTTP Express para expor métricas
+const metricsApp = express();
+metricsApp.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+const METRICS_PORT = process.env.METRICS_PORT || 9092;
+metricsApp.listen(METRICS_PORT, () => {
+  console.log(`[SERVER B] Métricas Prometheus disponíveis em http://localhost:${METRICS_PORT}/metrics`);
+});
 
 const packageDef = protoLoader.loadSync("protos/pricing.proto", {
   keepCase: true,
@@ -54,6 +107,8 @@ const calcularFrete = (subtotal, itens) => {
 
 const pricingService = {
   Calcular: (call, callback) => {
+    const startTime = Date.now();
+    
     try {
       const { itens } = call.request;
 
@@ -81,9 +136,18 @@ const pricingService = {
         `[SERVER B] Preço calculado - Subtotal: R$ ${precoTotal.toFixed(2)}, Frete: R$ ${frete.toFixed(2)}, Total: R$ ${total.toFixed(2)}`
       );
 
+      // Registra métricas de sucesso
+      grpcRequestsTotal.labels('Calcular', 'success').inc();
+      grpcRequestDuration.labels('Calcular').observe((Date.now() - startTime) / 1000);
+      calculosRealizados.inc();
+
       callback(null, response);
     } catch (error) {
       console.error(`[SERVER B] Erro ao calcular preço: ${error.message}`);
+
+      // Registra métricas de erro
+      grpcRequestsTotal.labels('Calcular', 'error').inc();
+      grpcRequestDuration.labels('Calcular').observe((Date.now() - startTime) / 1000);
 
       callback({
         code: grpc.status.INVALID_ARGUMENT,
@@ -93,6 +157,8 @@ const pricingService = {
   },
 
   RealizarCompra: (call, callback) => {
+    const startTime = Date.now();
+    
     try {
       const { itens, valor_total } = call.request;
 
@@ -140,9 +206,20 @@ const pricingService = {
         frete: frete,
       };
 
+      // Registra métricas de sucesso
+      grpcRequestsTotal.labels('RealizarCompra', 'success').inc();
+      grpcRequestDuration.labels('RealizarCompra').observe((Date.now() - startTime) / 1000);
+      comprasProcessadas.labels('CONFIRMADO').inc();
+      valorTotalCompras.inc(total);
+
       callback(null, response);
     } catch (error) {
       console.error(`[SERVER B] Erro ao processar compra: ${error.message}`);
+
+      // Registra métricas de erro
+      grpcRequestsTotal.labels('RealizarCompra', 'error').inc();
+      grpcRequestDuration.labels('RealizarCompra').observe((Date.now() - startTime) / 1000);
+      comprasProcessadas.labels('ERRO').inc();
 
       callback({
         code: grpc.status.INVALID_ARGUMENT,

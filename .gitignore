@@ -98,3 +98,6 @@ logs
 # Temporary files
 tmp/
 temp/
+
+# Prometheus binaries and data
+prometheus-3.7.3.linux-amd64-*/
