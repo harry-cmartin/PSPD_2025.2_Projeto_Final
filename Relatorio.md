@@ -656,140 +656,13 @@ postgres-deployment: replicas: 1
 
 Esta configuração serve como **baseline** para comparação com cenários mais distribuídos.
 
+Obviamente tudo foi dockerizado 
 ---
 
-## 6. A Aplicação (Continuação)
 
-### 6.1 Containerização com Docker
+## 6. Cenários de Teste
 
-#### 6.1.1 Dockerfile do Server-A
-
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Copiar protos e package files
-COPY protos/ /app/protos/
-COPY Microservices/package*.json ./
-COPY Microservices/serverA-microsservice/ ./
-
-# Instalar dependências
-RUN npm install
-
-EXPOSE 50051 9091
-
-CMD ["node", "index.js"]
-```
-
-#### 6.1.2 Dockerfile do Server-B
-
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY protos/ /app/protos/
-COPY Microservices/package*.json ./
-COPY Microservices/serverB-microsservice/ ./
-
-RUN npm install
-
-EXPOSE 50052 9092
-
-CMD ["node", "index.js"]
-```
-
-#### 6.1.3 Dockerfile do P-API
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Instalar dependências
-COPY P-Api/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copiar código
-COPY P-Api/ .
-COPY protos/ /app/protos/
-
-EXPOSE 8000
-
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-#### 6.1.4 Docker Compose para Desenvolvimento Local
-
-```yaml
-version: "3.8"
-
-services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: car_build_db
-      POSTGRES_USER: car_build_user
-      POSTGRES_PASSWORD: car_build_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U car_build_user"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  server-a:
-    build:
-      context: .
-      dockerfile: ./Microservices/serverA-microsservice/Dockerfile
-    ports:
-      - "50051:50051"
-      - "9091:9091"
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=car_build_db
-      - DB_USER=car_build_user
-      - DB_PASSWORD=car_build_password
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  server-b:
-    build:
-      context: .
-      dockerfile: ./Microservices/serverB-microsservice/Dockerfile
-    ports:
-      - "50052:50052"
-      - "9092:9092"
-
-  p-api:
-    build:
-      context: ./P-Api
-      dockerfile: ./Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      - SERVER_A_HOST=server-a
-      - SERVER_B_HOST=server-b
-    depends_on:
-      - server-a
-      - server-b
-
-volumes:
-  postgres_data:
-```
-
----
-
-## 7. Cenários de Teste
-
-### 7.1 Cenário 1: Configuração Base (Sem Paralelização)
+### 6.1 Cenário 1: Configuração Base (Sem Paralelização)
 
 **Objetivo:** Estabelecer baseline de desempenho
 
@@ -832,7 +705,7 @@ Query utilizada para monitorar o Prometheus
 
 ![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_base_7500.png)
 
-### 7.2 Cenário 2: Alteração do número de réplicas
+### 6.2 Cenário 2: Alteração do número de réplicas
 
 **Objetivo:** Comparar a partir da aplicação da paralelização
 
@@ -871,7 +744,7 @@ Query utilizada para monitorar o Prometheus
 ![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_Cenario2_7500.png)
 
 
-### 7.3 Cenário 3: Numero de Containers Por Workers
+### 6.3 Cenário 3: Numero de Containers Por Workers
 
 **Configuração:**
 - Cluster: 3 worker nodes
@@ -933,7 +806,7 @@ Query utilizada para monitorar o Prometheus
 ![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_Cenario3_7500.png)
 
 
-# 7.4 Análise Comparativa
+# 6.4 Análise Comparativa
 
 ## Análise Comparativa dos Testes de Carga
 
@@ -943,7 +816,7 @@ A seguir apresenta-se uma análise comparativa considerando os principais indica
 
 ---
 
-## 7.4.1. Throughput (RPS) Comparado
+## 6.4.1. Throughput (RPS) Comparado
 
 | Cenário           | RPS Aproximado | Observações                                                                               |
 |------------------|----------------|-------------------------------------------------------------------------------------------|
@@ -956,7 +829,7 @@ O throughput não cresce proporcionalmente ao aumento de usuários. Entre 2500 �
 
 ---
 
-## 7.4.2. Latência (Média, P95 e P99)
+## 6.4.2. Latência (Média, P95 e P99)
 
 ### Cenário 2500 Usuários
 - **Média:** 545–575 ms  
@@ -981,7 +854,7 @@ A latência cresce de forma acentuada, confirmando degradação progressiva.
 
 ---
 
-## 7.4.3. Falhas
+## 6.4.3. Falhas
 
 | Cenário           | Falhas Totais | Falhas (%) | Observações                                                         |
 |------------------|----------------|------------|---------------------------------------------------------------------|
@@ -993,7 +866,7 @@ A partir de 5000 usuários, o sistema ultrapassa sua capacidade de resposta dent
 
 ---
 
-## 7.4.4. Endpoints Críticos
+## 6.4.4. Endpoints Críticos
 
 ### **/get-pecas**
 - Endpoint mais afetado.
@@ -1011,7 +884,7 @@ A partir de 5000 usuários, o sistema ultrapassa sua capacidade de resposta dent
 
 ---
 
-## 7.4.5. Correlação com o Prometheus
+## 6.4.5. Correlação com o Prometheus
 
 A query utilizada foi:
 
@@ -1032,7 +905,7 @@ A análise via Prometheus confirma exatamente o comportamento observado nos temp
 
 ---
 
-## 7.4.6. Conclusão da Análise Comparativa
+## 6.4.6. Conclusão da Análise Comparativa
 
 1. O sistema suporta bem até **2500 usuários**, com latência controlada e ausência de falhas.  
 2. Entre **2500 e 5000 usuários**, ocorre saturação do cluster:
@@ -1054,13 +927,13 @@ Os testes demonstram de forma clara o ponto de saturação da aplicação e a ne
 
 ---
 
-# 8. Resultados e Discussão
+# 7. Resultados e Discussão
 
-## 8.1 Objetivos Alcançados
+## 7.1 Objetivos Alcançados
 
 Os objetivos propostos foram plenamente alcançados. A partir da aplicação baseada em microserviços definida anteriormente, implementamos um ambiente completo de orquestração, monitoramento e testes de carga utilizando Kubernetes, Prometheus e Locust. O cluster K8s foi configurado em modo distribuído (cluster multi-nó), permitindo a execução independente dos módulos P, A e B, conforme exigido na especificação do projeto. Além disso, estabelecemos um pipeline de observabilidade capaz de registrar métricas detalhadas de desempenho, throughput, latência e comportamento interno dos microserviços, suportando análises robustas durante os cenários de teste.
 
-## 8.2 Principais Aprendizados
+## 7.2 Principais Aprendizados
 
 Entre os aprendizados mais relevantes estão:
 
@@ -1070,9 +943,9 @@ Entre os aprendizados mais relevantes estão:
 - Identificação de gargalos de desempenho tomando decisões baseadas em evidências observáveis, como métricas de latência e saturação de recursos.
 - Melhor entendimento sobre sistemas distribuídos, comunicação via gRPC, paralelização e impacto do crescimento da carga na elasticidade da aplicação.
 
-## 8.3 Dificuldades Encontradas
+## 7.3 Dificuldades Encontradas
 
-### 8.3.1 Problemas com Kubernetes
+### 7.3.1 Problemas com Kubernetes
 
 A maior dificuldade enfrentada foi durante a ampliação do cluster. Embora a especificação permitisse trabalhar com múltiplos worker nodes, observamos que o ambiente local possuía limitações práticas ao tentar escalar o cluster além de três workers. A tentativa de criar cinco workers gerou instabilidade no Kind, falhas na criação de Pods e timeouts de scheduling, indicando limitação de recursos da máquina host. Mesmo ajustando parâmetros do Kind e reduzindo o consumo de recursos dos serviços, o cluster só permaneceu estável com três nós workers.
 
@@ -1082,7 +955,7 @@ Outras dificuldades incluíram:
 - Liveness e readiness probes sensíveis, ocasionando reinícios frequentes dos Pods durante ajustes iniciais.
 - Distribuição desigual de Pods entre os nós, exigindo revisão de requests e limits de CPU e memória.
 
-### 8.3.2 Desafios com gRPC
+### 7.3.2 Desafios com gRPC
 
 A comunicação entre P, A e B via gRPC apresentou obstáculos, especialmente dentro do cluster:
 
@@ -1090,7 +963,7 @@ A comunicação entre P, A e B via gRPC apresentou obstáculos, especialmente de
 - Latências maiores quando havia múltiplas instâncias dos serviços A ou B.
 - Necessidade de instrumentar os serviços gRPC com métricas próprias para Prometheus, o que exigiu bibliotecas adicionais nos servidores.
 
-### 8.3.3 Configuração do Prometheus
+### 7.3.3 Configuração do Prometheus
 
 A etapa de monitoramento exigiu ajustes cuidadosos. Os principais desafios incluíram:
 
@@ -1099,7 +972,7 @@ A etapa de monitoramento exigiu ajustes cuidadosos. Os principais desafios inclu
 - Tratamento de métricas duplicadas devido à reinicialização de Pods.
 - Criação de métricas significativas sem sobrecarregar o Prometheus com informações desnecessárias.
 
-### 8.3.4 Testes de Carga
+### 7.3.4 Testes de Carga
 
 Apesar da eficiência do Locust, alguns desafios foram observados:
 
@@ -1108,7 +981,7 @@ Apesar da eficiência do Locust, alguns desafios foram observados:
 - Necessidade de interpretar corretamente os resultados de latência em conjunto com métricas do Prometheus.
 - Ajuste do comportamento dos usuários virtuais para que os cenários refletissem interações realistas.
 
-## 8.4 Soluções Implementadas
+### 7.4 Soluções Implementadas
 
 Para superar os desafios encontrados, foram implementadas diversas soluções:
 
@@ -1119,25 +992,14 @@ Para superar os desafios encontrados, foram implementadas diversas soluções:
 - Redução do número de workers para três, garantindo estabilidade suficiente para realizar os testes.
 - Ajustes progressivos nos cenários de teste do Locust, calibrando quantidade de usuários e taxa de spawn.
 
-## 8.5 Trabalhos Futuros
-
-Como evolução natural do projeto, destacam-se:
-
-- Implementação de autoscaling real com Horizontal Pod Autoscaler baseado em métricas do Prometheus.
-- Uso de ferramentas de visualização como Grafana, criando dashboards completos.
-- Aplicação de tracing distribuído com Jaeger ou OpenTelemetry.
-- Execução de testes em ambientes de nuvem como GKE ou EKS, comparando resultados com o cluster local.
-- Implementação de mecanismo de caching nos serviços para reduzir sobrecarga no banco de dados.
-- Realização de testes de resiliência envolvendo falhas simuladas de Pods ou nós.
-
-## 8.6 Considerações Finais
+## 7.5 Considerações Finais
 
 A atividade proporcionou uma visão completa do ciclo de vida de uma aplicação distribuída em Kubernetes, desde o deploy até o monitoramento e análise de desempenho. A experiência prática demonstrou que ferramentas como Kubernetes, Prometheus e Locust enriquecem o entendimento teórico e revelam como limitações de infraestrutura, gargalos e escolhas arquiteturais influenciam diretamente a performance. Apesar dos desafios enfrentados, especialmente na montagem do cluster multi-nó e na comunicação gRPC, o grupo conseguiu entregar um sistema estável, observável e devidamente testado. Os resultados obtidos e os conhecimentos adquiridos alinham-se diretamente aos objetivos da disciplina, demonstrando domínio técnico e maturidade no uso de tecnologias modernas de computação distribuída.
 
 
 ---
 
-## 9. Conclusões Individuais
+## 8. Conclusões Individuais
 
 | Integrante                         | Contribuição                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Nota |
 |------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|
