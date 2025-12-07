@@ -103,6 +103,13 @@ Para este projeto, optamos por utilizar o **Kind (Kubernetes in Docker)** como p
 - Integração nativa com Docker
 - Suporte a funcionalidades avançadas do Kubernetes
 
+ #### Migração do Minikube para Kind
+
+
+**Antes (Minikube)**: Cluster single-node simulado, exposição via LoadBalancer + minikube tunnel, carregamento manual de imagens com minikube image load.
+
+**Agora (Kind)**: Cluster multi-nó real (1 control-plane + 3 workers), exposição via NodePort nativo, registry local para imagens.
+
 ### 3.2 Arquitetura do Cluster
 
 O cluster foi configurado com a seguinte topologia:
@@ -242,6 +249,7 @@ ports:
     nodePort: 30080
 ```
 - Único serviço exposto externamente
+- Antes estávamos usando o loadbalancer (por conta da facilidade de subir com o minikube tunnel), mas, o NodePort foi escolhido nessa versão pra facilitar a configuração do kind.
 - Acessível via localhost:8000
 
 ### 3.5 Fluxo de Comunicação
