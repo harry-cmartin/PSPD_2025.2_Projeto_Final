@@ -825,7 +825,7 @@ A seguir apresenta-se uma análise comparativa considerando os principais indica
 | **7500 usuários** | ~1000 RPS      | RPS volta a cair, não acompanha o crescimento da carga.                               |
 
 **Interpretação:**  
-O throughput não cresce proporcionalmente ao aumento de usuários. Entre 2500 → 5000 usuários ocorre queda significativa no processamento por segundo, sugerindo saturação de recursos do cluster. No teste de 7500 usuários, o sistema opera próximo do limite máximo (~1050 RPS), indicando estabilização forçada pelo gargalo principal.
+O throughput não cresce proporcionalmente ao aumento de usuários. Entre 2500 → 5000 usuários ocorre queda significativa no processamento por segundo, sugerindo saturação de recursos do cluster. No teste de 7500 usuários, o sistema opera próximo do limite máximo (~1000 RPS), indicando estabilização forçada pelo gargalo principal.
 
 ---
 
