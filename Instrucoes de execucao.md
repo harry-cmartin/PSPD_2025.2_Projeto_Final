@@ -3,7 +3,9 @@
 ## Pré-Requisitos
 Antes de tudo, certifique-se de ter o Docker e o Docker Compose instalados na sua máquina.
 
-Além disso, tenha o Kind instalado para criar um cluster Kubernetes local.
+Além disso, tenha o Kind instalado para criar um cluster Kubernetes local e tenha instaldo o prometheus também.
+
+OBS: O arquivo de configuração do Prometheus já está incluso no repositório.
 
 ## Rodando o Projeto com Locust e Prometheus
 
