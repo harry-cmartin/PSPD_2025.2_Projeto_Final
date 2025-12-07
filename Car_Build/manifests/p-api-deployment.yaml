@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   name: p-api-deployment
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: p-api
@@ -13,6 +13,18 @@ spec:
       labels:
         app: p-api
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - p-api
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: p-api-container
           image: localhost:5001/car_build-p-api:latest
