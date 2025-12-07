@@ -2,7 +2,7 @@
 
 **Curso:** Engenharia de Software  
 **Disciplina:** Programação para Sistemas Paralelos e Distribuídos  
-**Data:** Dezembro de 2025  
+**Data:** 6 de Dezembro de 2025  
 **Instituição:** Universidade de Brasília - UnB
 
 ## Equipe
@@ -672,7 +672,7 @@ Obviamente tudo foi dockerizado
 
 **Caso base - 1 usuario e 1 spawn rate**
 
-[Teste 1 - Locust](assets/Casobase.png)
+![Teste 1 - Locust](assets/Casobase.png)
 
 Casos de Teste:
 
