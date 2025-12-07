@@ -587,7 +587,7 @@ Resposta: Formato Prometheus
 - Expor métricas na porta 9092
 
 
-#### 5.7.2 Fluxo de uma Requisição Completa
+#### 5.5.2 Fluxo de uma Requisição Completa
 
 ```
 1. Cliente Frontend
@@ -636,7 +636,7 @@ Resposta: Formato Prometheus
     - Armazena time series no TSDB
 ```
 
-### 5.8 Configuração Base da Aplicação
+### 5.6 Configuração Base da Aplicação
 
 Para atender ao requisito de **configuração base** (mínima paralelização), a aplicação atual está configurada com:
 
@@ -789,9 +789,7 @@ volumes:
 
 ## 7. Cenários de Teste
 
-### 7.1 Metodologia de Testes
-
-### 7.2 Cenário 1: Configuração Base (Sem Paralelização)
+### 7.1 Cenário 1: Configuração Base (Sem Paralelização)
 
 **Objetivo:** Estabelecer baseline de desempenho
 
@@ -834,9 +832,7 @@ Query utilizada para monitorar o Prometheus
 
 ![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_base_7500.png)
 
-
-
-### 7.3 Cenário 2: Alteração do número de réplicas
+### 7.2 Cenário 2: Alteração do número de réplicas
 
 **Objetivo:** Comparar a partir da aplicação da paralelização
 
@@ -875,7 +871,7 @@ Query utilizada para monitorar o Prometheus
 ![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_Cenario2_7500.png)
 
 
-### 7.4 Cenário 3: Numero de Containers Por Workers
+### 7.3 Cenário 3: Numero de Containers Por Workers
 
 **Configuração:**
 - Cluster: 3 worker nodes
@@ -937,109 +933,218 @@ Query utilizada para monitorar o Prometheus
 ![Teste 3 - 7500 usuarios - Prometheus](assets/Prometheus_Cenario3_7500.png)
 
 
-### 7.7 Análise Comparativa
+# 7.4 Análise Comparativa
 
-**Conclusões Gerais:**
+## Análise Comparativa dos Testes de Carga
+
+Os testes foram realizados com três níveis progressivos de carga: **2500**, **5000** e **7500 usuários**, todos com **spawn rate de 100 usuários por segundo** e duração de **3 minutos**. O objetivo foi avaliar o comportamento da aplicação sob aumento contínuo de demanda, identificando limites, gargalos e a capacidade de resposta do sistema.
+
+A seguir apresenta-se uma análise comparativa considerando os principais indicadores exibidos pelo Locust e confirmados pelas métricas observadas no Prometheus.
 
 ---
 
-## 8. Conclusão Geral
+## 7.4.1. Throughput (RPS) Comparado
 
-### 8.1 Objetivos Alcançados
+| Cenário           | RPS Aproximado | Observações                                                                               |
+|------------------|----------------|-------------------------------------------------------------------------------------------|
+| **2500 usuários** | ~1195 RPS      | Sistema estável e sem falhas.                                                             |
+| **5000 usuários** | ~1021 RPS      | Redução no throughput indicando saturação do cluster.                                      |
+| **7500 usuários** | ~1054 RPS      | RPS volta a subir, mas não acompanha o crescimento da carga.                               |
 
-### 8.2 Principais Aprendizados
+**Interpretação:**  
+O throughput não cresce proporcionalmente ao aumento de usuários. Entre 2500 → 5000 usuários ocorre queda significativa no processamento por segundo, sugerindo saturação de recursos do cluster. No teste de 7500 usuários, o sistema opera próximo do limite máximo (~1050 RPS), indicando estabilização forçada pelo gargalo principal.
 
-### 8.3 Dificuldades Encontradas
+---
 
-#### 8.3.1 Problemas com Kubernetes
+## 7.4.2. Latência (Média, P95 e P99)
 
-#### 8.3.2 Desafios com gRPC
+### Cenário 2500 Usuários
+- **Média:** 545–575 ms  
+- **P95:** 980–1300 ms  
+- **P99:** 1200–1500 ms  
 
-#### 8.3.3 Configuração do Prometheus
+Latência aceitável para arquitetura distribuída via gRPC.
 
-#### 8.3.4 Testes de Carga
+### Cenário 5000 Usuários
+- **Média:** 1271–2109 ms  
+- **P95:** 1400–2300 ms  
+- **P99:** até 15000 ms no `/health`  
 
-### 8.4 Soluções Implementadas
+O endpoint `/health` apresentou comportamento crítico, indicando sobrecarga no P-API.
 
-### 8.5 Trabalhos Futuros
+### Cenário 7500 Usuários
+- **Média:** 1500–2500 ms  
+- **P95:** ~2500 ms  
+- **P99:** até 3400 ms  
 
-### 8.6 Considerações Finais
+A latência cresce de forma acentuada, confirmando degradação progressiva.
+
+---
+
+## 7.4.3. Falhas
+
+| Cenário           | Falhas Totais | Falhas (%) | Observações                                                         |
+|------------------|----------------|------------|---------------------------------------------------------------------|
+| **2500 usuários** | 0              | 0%         | Execução estável.                                                   |
+| **5000 usuários** | 3083           | 2%         | Tempo de resposta excedeu limites do Locust em vários endpoints.    |
+| **7500 usuários** | 3566           | 1%         | Volume maior, mas percentual menor devido ao aumento das requisições. |
+
+A partir de 5000 usuários, o sistema ultrapassa sua capacidade de resposta dentro do timeout padrão.
+
+---
+
+## 7.4.4. Endpoints Críticos
+
+### **/get-pecas**
+- Endpoint mais afetado.
+- Depende de consultas ao PostgreSQL e chamadas gRPC em cadeia.
+- No teste de 5000 usuários: **2297 falhas**.
+- No teste de 7500 usuários: P99 atinge **64000 ms**.
+
+### **/health**
+- Deveria ser o endpoint mais leve, porém:
+- No teste de 5000 usuários teve P99 perto de **15000 ms**.
+- Indica saturação do nó principal e dificuldade para responder até operações triviais.
+
+### **/pagar** e **/calcular**
+- Mais estáveis, porém também apresentam aumento de latência sob carga intensa.
+
+---
+
+## 7.4.5. Correlação com o Prometheus
+
+A query utilizada foi:
+
+```promql
+rate(p_api_request_duration_seconds_sum[3m]) / rate(p_api_request_duration_seconds_count[3m]) * 1000
+```
+
+
+Essa métrica calcula a **latência média (em ms)** das requisições no período de 3 minutos.
+
+Observações:
+
+- No teste de **2500 usuários**, a latência média manteve-se estável.
+- No teste de **5000 usuários**, houve salto evidente, alinhado às falhas no Locust.
+- No teste de **7500 usuários**, a latência permaneceu consistentemente elevada (acima de 2000 ms).
+
+A análise via Prometheus confirma exatamente o comportamento observado nos tempos médios, P95 e P99 do Locust.
+
+---
+
+## 7.4.6. Conclusão da Análise Comparativa
+
+1. O sistema suporta bem até **2500 usuários**, com latência controlada e ausência de falhas.  
+2. Entre **2500 e 5000 usuários**, ocorre saturação do cluster:
+   - Aumento abrupto de latência.
+   - Falhas consideráveis no `/get-pecas`.
+   - Degradação no `/health`, indicando sobrecarga do P-API.
+3. Com **7500 usuários**, o sistema continua funcionando, porém:
+   - Latência extremamente elevada.
+   - Crescimento expressivo no P95 e P99.
+   - RPS limitado pela capacidade máxima do cluster.  
+4. O **P-API** é o principal gargalo, seguido por:
+   - Interações gRPC sob alta concorrência.
+   - Consultas ao PostgreSQL realizadas pelo Server A.  
+5. O uso de apenas **3 workers no cluster** limitou o paralelismo disponível, impedindo escalabilidade linear.  
+
+**Conclusão Geral:**  
+Os testes demonstram de forma clara o ponto de saturação da aplicação e a necessidade de estratégias de escalabilidade, como aumento de réplicas, HPA, otimização de queries, caching e distribuição mais homogênea dos Pods.
+
+
+---
+
+# 8. Resultados e Discussão
+
+## 8.1 Objetivos Alcançados
+
+Os objetivos propostos foram plenamente alcançados. A partir da aplicação baseada em microserviços definida anteriormente, implementamos um ambiente completo de orquestração, monitoramento e testes de carga utilizando Kubernetes, Prometheus e Locust. O cluster K8s foi configurado em modo distribuído (cluster multi-nó), permitindo a execução independente dos módulos P, A e B, conforme exigido na especificação do projeto. Além disso, estabelecemos um pipeline de observabilidade capaz de registrar métricas detalhadas de desempenho, throughput, latência e comportamento interno dos microserviços, suportando análises robustas durante os cenários de teste.
+
+## 8.2 Principais Aprendizados
+
+Entre os aprendizados mais relevantes estão:
+
+- Compreensão prática do funcionamento do Kubernetes, incluindo Deployments, Services, ConfigMaps, PVCs e health checks.
+- Implementação de um pipeline de métricas com Prometheus, entendendo como realizar instrumentação adequada para coleta de dados.
+- Domínio da construção de testes de carga realistas com Locust, simulando acessos concorrentes e analisando limites de throughput.
+- Identificação de gargalos de desempenho tomando decisões baseadas em evidências observáveis, como métricas de latência e saturação de recursos.
+- Melhor entendimento sobre sistemas distribuídos, comunicação via gRPC, paralelização e impacto do crescimento da carga na elasticidade da aplicação.
+
+## 8.3 Dificuldades Encontradas
+
+### 8.3.1 Problemas com Kubernetes
+
+A maior dificuldade enfrentada foi durante a ampliação do cluster. Embora a especificação permitisse trabalhar com múltiplos worker nodes, observamos que o ambiente local possuía limitações práticas ao tentar escalar o cluster além de três workers. A tentativa de criar cinco workers gerou instabilidade no Kind, falhas na criação de Pods e timeouts de scheduling, indicando limitação de recursos da máquina host. Mesmo ajustando parâmetros do Kind e reduzindo o consumo de recursos dos serviços, o cluster só permaneceu estável com três nós workers.
+
+Outras dificuldades incluíram:
+
+- Conflitos de portas e registros locais de imagem.
+- Liveness e readiness probes sensíveis, ocasionando reinícios frequentes dos Pods durante ajustes iniciais.
+- Distribuição desigual de Pods entre os nós, exigindo revisão de requests e limits de CPU e memória.
+
+### 8.3.2 Desafios com gRPC
+
+A comunicação entre P, A e B via gRPC apresentou obstáculos, especialmente dentro do cluster:
+
+- Necessidade de substituir endereços IP por DNS internos gerados pelos Services do Kubernetes.
+- Latências maiores quando havia múltiplas instâncias dos serviços A ou B.
+- Necessidade de instrumentar os serviços gRPC com métricas próprias para Prometheus, o que exigiu bibliotecas adicionais nos servidores.
+
+### 8.3.3 Configuração do Prometheus
+
+A etapa de monitoramento exigiu ajustes cuidadosos. Os principais desafios incluíram:
+
+- Configuração correta dos endpoints /metrics para cada microserviço.
+- Ajuste do arquivo prometheus.yml para reconhecer todos os targets de forma estável.
+- Tratamento de métricas duplicadas devido à reinicialização de Pods.
+- Criação de métricas significativas sem sobrecarregar o Prometheus com informações desnecessárias.
+
+### 8.3.4 Testes de Carga
+
+Apesar da eficiência do Locust, alguns desafios foram observados:
+
+- Manter estabilidade da aplicação em cenários com picos de usuários.
+- Dificuldade em simular cenários altamente agressivos sem saturar o cluster.
+- Necessidade de interpretar corretamente os resultados de latência em conjunto com métricas do Prometheus.
+- Ajuste do comportamento dos usuários virtuais para que os cenários refletissem interações realistas.
+
+## 8.4 Soluções Implementadas
+
+Para superar os desafios encontrados, foram implementadas diversas soluções:
+
+- Ajuste de requests e limits de CPU e RAM, evitando OOMKills e permitindo melhor distribuição dos Pods.
+- Criação de um registry local integrado ao Kind, garantindo que as imagens sempre estivessem disponíveis para pull nos nós.
+- Refinamento dos health checks, tornando-os mais tolerantes durante períodos de inicialização.
+- Instrumentação detalhada com métricas customizadas tanto no P-API quanto nos serviços A e B.
+- Redução do número de workers para três, garantindo estabilidade suficiente para realizar os testes.
+- Ajustes progressivos nos cenários de teste do Locust, calibrando quantidade de usuários e taxa de spawn.
+
+## 8.5 Trabalhos Futuros
+
+Como evolução natural do projeto, destacam-se:
+
+- Implementação de autoscaling real com Horizontal Pod Autoscaler baseado em métricas do Prometheus.
+- Uso de ferramentas de visualização como Grafana, criando dashboards completos.
+- Aplicação de tracing distribuído com Jaeger ou OpenTelemetry.
+- Execução de testes em ambientes de nuvem como GKE ou EKS, comparando resultados com o cluster local.
+- Implementação de mecanismo de caching nos serviços para reduzir sobrecarga no banco de dados.
+- Realização de testes de resiliência envolvendo falhas simuladas de Pods ou nós.
+
+## 8.6 Considerações Finais
+
+A atividade proporcionou uma visão completa do ciclo de vida de uma aplicação distribuída em Kubernetes, desde o deploy até o monitoramento e análise de desempenho. A experiência prática demonstrou que ferramentas como Kubernetes, Prometheus e Locust enriquecem o entendimento teórico e revelam como limitações de infraestrutura, gargalos e escolhas arquiteturais influenciam diretamente a performance. Apesar dos desafios enfrentados, especialmente na montagem do cluster multi-nó e na comunicação gRPC, o grupo conseguiu entregar um sistema estável, observável e devidamente testado. Os resultados obtidos e os conhecimentos adquiridos alinham-se diretamente aos objetivos da disciplina, demonstrando domínio técnico e maturidade no uso de tecnologias modernas de computação distribuída.
+
 
 ---
 
 ## 9. Conclusões Individuais
 
-### 9.1 FLÁVIO GUSTAVO ARAÚJO DE MELO (211030602)
-
-#### Comentários Pessoais
-[ESPAÇO PARA COMENTÁRIOS]
-
-#### Partes Trabalhadas
-[ESPAÇO PARA DESCRIÇÃO]
-
-#### Aprendizados
-[ESPAÇO PARA APRENDIZADOS]
-
-#### Nota de Autoavaliação
-**Nota:** ____ / 10
-
-**Justificativa:**
-
----
-
-### 9.2 GUILHERME SILVA DUTRA (221021984)
-
-#### Comentários Pessoais
-[ESPAÇO PARA COMENTÁRIOS]
-
-#### Partes Trabalhadas
-[ESPAÇO PARA DESCRIÇÃO]
-
-#### Aprendizados
-[ESPAÇO PARA APRENDIZADOS]
-
-#### Nota de Autoavaliação
-**Nota:** ____ / 10
-
-**Justificativa:**
-
----
-
-### 9.3 GUSTAVO FRANCA BOA SORTE (211030774)
-
-#### Comentários Pessoais
-[ESPAÇO PARA COMENTÁRIOS]
-
-#### Partes Trabalhadas
-[ESPAÇO PARA DESCRIÇÃO]
-
-#### Aprendizados
-[ESPAÇO PARA APRENDIZADOS]
-
-#### Nota de Autoavaliação
-**Nota:** ____ / 10
-
-**Justificativa:**
-
----
-
-### 9.4 HARRYSON CAMPOS MARTINS (211039466)
-
-#### Comentários Pessoais
-[ESPAÇO PARA COMENTÁRIOS]
-
-#### Partes Trabalhadas
-[ESPAÇO PARA DESCRIÇÃO]
-
-#### Aprendizados
-[ESPAÇO PARA APRENDIZADOS]
-
-#### Nota de Autoavaliação
-**Nota:** ____ / 10
-
-**Justificativa:**
-
----
+| Integrante                         | Contribuição                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Nota |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|
+| **FLÁVIO GUSTAVO ARAÚJO DE MELO** | A atividade de infraestrutura e monitoramento foi extremamente relevante para consolidar e aprofundar meus conhecimentos em orquestração e observabilidade. Trabalhar com Kubernetes em um cluster multi-nó via Kind, definindo Deployments, Services, ConfigMaps e PVCs, permitiu-me compreender de forma prática como aplicações distribuídas são estruturadas e mantidas em alta disponibilidade. Além disso, a configuração de health checks e de limites de recursos trouxe uma visão bem mais madura sobre resiliência, autosserviço de recuperação e uso eficiente de CPU e memória em ambiente orquestrado. Considero que minha principal contribuição esteve na organização e implementação dos manifestos Kubernetes e na validação do fluxo de deploy de ponta a ponta, garantindo que todos os serviços do Car Build operassem de forma estável, escalável e aderente a um cenário próximo de produção. | 9/10 |
+| **GUILHERME SILVA DUTRA**         | Julgo esta atividade particularmente importante para meu desenvolvimento profissional, pois ela conecta diretamente conceitos de infraestrutura, monitoramento e testes de carga com a realidade do mercado. Ao trabalhar com Prometheus para coleta de métricas e com Locust para geração de carga, pude exercitar a mentalidade de observabilidade, indo além de “apenas fazer funcionar” e passando a medir desempenho, latência, taxa de erro e comportamento do sistema sob estresse. A experiência de definir métricas relevantes, interpretar queries em PromQL e relacioná-las com os cenários de uso do Locust ampliou minha visão sobre diagnósticos de performance e identificação de gargalos. Dessa forma, considero que contribui de maneira consistente na análise dos resultados de teste, na interpretação das métricas e na discussão de melhorias, aproximando ainda mais a prática acadêmica das exigências reais da indústria. | 10/10 |
+| **GUSTAVO FRANCA BOA SORTE**      | Esta atividade foi fundamental para meu desenvolvimento técnico em infraestrutura e monitoramento de sistemas distribuídos. A participação na instrumentação dos serviços com métricas expostas para o Prometheus, bem como na configuração dos jobs de scrape e na elaboração de consultas em PromQL, permitiu-me compreender na prática como métricas de requisições, latência, banco de dados e indicadores de negócio se conectam ao comportamento real da aplicação. Além disso, a criação e execução de cenários de teste com o Locust, simulando diferentes perfis de usuários e cargas, mostrou de forma concreta o impacto da orquestração em Kubernetes e do ajuste fino de recursos na estabilidade do sistema. Acredito que contribuí de forma integral, ajudando tanto na implementação das métricas quanto na correlação dos resultados de Locust com os dashboards do Prometheus, o que foi essencial para identificar gargalos e validar a robustez da solução. | 8/10 |
+| **HARRYSON CAMPOS MARTINS**       | Esta atividade foi essencial para o meu aprimoramento técnico, especialmente na integração entre orquestração de containers, monitoramento e testes de carga em um ambiente realista. Ao atuar na análise conjunta dos resultados do Locust e das métricas coletadas pelo Prometheus, pude consolidar o entendimento de como o sistema se comporta sob diferentes níveis de pressão, identificando endpoints mais sensíveis, possíveis gargalos no banco de dados e necessidades de escalonamento em Kubernetes. Também tive participação ativa na validação da infraestrutura, acompanhando a distribuição dos pods entre os nós, a aplicação de health checks e o efeito da escala de réplicas na estabilidade geral. De modo geral, considero que contribuí de forma consistente para a qualidade e confiabilidade do projeto, fortalecendo tanto meu domínio técnico em observabilidade quanto minha capacidade de colaborar em diagnósticos e decisões de melhoria em sistemas complexos. | 9/10 |
 
 ## Referências
 
