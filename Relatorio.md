@@ -522,40 +522,6 @@ class CarBuildUser(HttpUser):
                 print(f"Erro no fluxo de compra: {e}")
 ```
 
-#### 4.2.3 Execução de Testes
-
-**Interface Web (Recomendado):**
-```bash
-./run-locust.sh
-# Acesso: http://localhost:8089
-
-# Configurar:
-# - Number of users: 10, 100, 500
-# - Spawn rate: 1, 10, 50
-# - Host: http://localhost:8000
-```
-
-**Linha de Comando (Headless):**
-```bash
-# Teste leve
-locust -f locustfile.py \
-  --host=http://localhost:8000 \
-  --users 10 --spawn-rate 2 \
-  --run-time 60s --headless
-
-# Teste médio
-locust -f locustfile.py \
-  --host=http://localhost:8000 \
-  --users 100 --spawn-rate 10 \
-  --run-time 300s --headless
-
-# Teste intenso
-locust -f locustfile.py \
-  --host=http://localhost:8000 \
-  --users 500 --spawn-rate 50 \
-  --run-time 600s --headless
-```
-
 #### 4.2.4 Métricas Coletadas pelo Locust
 
 - **RPS (Requests Per Second)**: Taxa de requisições
