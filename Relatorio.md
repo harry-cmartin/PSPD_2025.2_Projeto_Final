@@ -580,21 +580,6 @@ O fluxo de monitoramento funciona da seguinte forma:
 [Gráficos] → Visualização
 ```
 
-**Monitoramento durante testes:**
-```bash
-# Terminal 1: Iniciar Prometheus
-./start-with-prometheus.sh
-
-# Terminal 2: Subir aplicação
-kubectl apply -f manifests/
-
-# Terminal 3: Executar Locust
-locust -f locustfile.py --users 100 --spawn-rate 10
-
-# Terminal 4: Monitorar pods
-watch kubectl get pods -o wide
-```
-
 ---
 
 ## 5. A Aplicação
@@ -786,6 +771,8 @@ Obviamente tudo foi dockerizado
 **Caso base - 1 usuario e 1 spawn rate**
 
 ![Teste 1 - Locust](assets/Casobase.png)
+
+![Teste 1 - Prometheus](assets/CasoBase_prometheus.png)
 
 Casos de Teste:
 
