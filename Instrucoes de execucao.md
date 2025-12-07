@@ -30,6 +30,18 @@ cd Car_Build/
 ./run-locust.sh
 ``` 
 
+- (Opcional) Para rodar o frontend, utilize os comandos:
+
+```bash
+cd Car_Build/WebClient
+npm install
+npm start
+```
+
+- O frontend estará disponível em: **http://localhost:3000**
+
+- Pronto ! Agora o sistema está rodando com Locust e Prometheus.
+
 - Por fim, acesse o locust no navegador através do link: **http://localhost:8089**
 
 - E acesse o Prometheus no navegador através do link: **http://localhost:9090**
